@@ -21,6 +21,11 @@
     "typescript-eslint": "^8.26.0"
   },
   "dependencies": {
+    "@temporalio/activity": "^1.11.7",
+    "@temporalio/client": "^1.11.7",
+    "@temporalio/common": "^1.11.7",
+    "@temporalio/worker": "^1.11.7",
+    "@temporalio/workflow": "^1.11.7",
     "@types/node": "^22.13.10",
     "tsx": "^4.19.3",
     "zod": "^3.24.2"
