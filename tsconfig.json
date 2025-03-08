@@ -1,0 +1,11 @@
+{
+  "extends": "@tsconfig/node23/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "checkJs": true,
+    "lib": ["ES2023", "DOM"],
+    "esModuleInterop": true
+  },
+  "include": ["eslint.config.mjs", "src/**/*.ts"]
+}
