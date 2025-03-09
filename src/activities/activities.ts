@@ -1,9 +1,7 @@
 import { log } from "@temporalio/activity";
-import { getConfig } from "../helpers/config.js";
 import GeocodingV6 from "@mapbox/mapbox-sdk/services/geocoding-v6";
 import Directions, { Route } from "@mapbox/mapbox-sdk/services/directions";
-
-const config = getConfig();
+import { getMapboxClient } from "../helpers/mapbox.js";
 
 class GeocodeLocationError extends Error {}
 class DirectionsError extends Error {}
@@ -11,9 +9,7 @@ class DirectionsError extends Error {}
 type Coordinates = [number, number];
 
 export async function geocodeLocation(location: string): Promise<Coordinates> {
-  const geocodingService = GeocodingV6({
-    accessToken: config.MAPBOX_ACCESS_TOKEN,
-  });
+  const geocodingService = GeocodingV6(getMapboxClient());
 
   log.debug(`Resolving coordinates for location '${location}'`);
   const mbxResponse = await geocodingService
@@ -36,10 +32,7 @@ export async function geocodeLocation(location: string): Promise<Coordinates> {
 }
 
 export async function getNavigationRoute(coordinatesList: Coordinates[]) {
-  const directionsService = Directions({
-    accessToken: config.MAPBOX_ACCESS_TOKEN,
-  });
-
+  const directionsService = Directions(getMapboxClient());
   const mbxResponse = await directionsService
     .getDirections({
       profile: "driving-traffic",

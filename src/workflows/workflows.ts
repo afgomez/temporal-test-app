@@ -11,7 +11,11 @@ const { geocodeLocation, getNavigationRoute } = proxyActivities<
 >({
   startToCloseTimeout: "1 minute",
   retry: {
-    nonRetryableErrorTypes: ["GeocodeLocationError", "DirectionsError"],
+    nonRetryableErrorTypes: [
+      "InvalidTokenError",
+      "DirectionsError",
+      "InvalidTokenError",
+    ],
   },
 });
 
