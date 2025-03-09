@@ -19,7 +19,13 @@ try {
 
   if (locations.length < 2) {
     throw new Error(
-      "Unable to start the service: I need at least two locations"
+      "Unable to start the service: I need at least two locations."
+    );
+  }
+
+  if (locations.length > 25) {
+    throw new Error(
+      "Unable to start the service: I (well... Mapbox) cannot handle more than 25 locations."
     );
   }
 

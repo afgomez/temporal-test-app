@@ -6,21 +6,35 @@ type CheckRouteArgs = {
   locations: string[];
 };
 
-const { geocodeLocation } = proxyActivities<typeof activities>({
+const { geocodeLocation, getNavigationRoute } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "1 minute",
   retry: {
-    nonRetryableErrorTypes: ["GeocodeLocationError"],
+    nonRetryableErrorTypes: ["GeocodeLocationError", "DirectionsError"],
   },
 });
+
+const TEN_MINUTES = 10 * 60 * 1000;
 
 export async function checkRoute(
   args: CheckRouteArgs
 ): Promise<"on_time" | "delayed"> {
-  const _coordinates = await Promise.all(args.locations.map(geocodeLocation));
+  // TODO: optimization: Mapbox has a batch mode for its geocode API. Use that
+  // instead of making a request per location.
+  const coordinates = await Promise.all(args.locations.map(geocodeLocation));
 
-  // 2. Create a route with the coordinates
-  // 3. Test for traffic delays
-  // 4. If the delay is longer than 10 minutes, notify the customer
+  const route = await getNavigationRoute(coordinates);
 
-  return "on_time";
+  const durationDiff = route.duration - route.duration_typical;
+
+  // if (true) {
+  if (durationDiff > TEN_MINUTES) {
+    // Generate fancy message
+    // Send message
+
+    return "delayed";
+  } else {
+    return "on_time";
+  }
 }

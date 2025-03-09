@@ -1,14 +1,16 @@
 import { log } from "@temporalio/activity";
 import { getConfig } from "../helpers/config.js";
 import GeocodingV6 from "@mapbox/mapbox-sdk/services/geocoding-v6";
+import Directions, { Route } from "@mapbox/mapbox-sdk/services/directions";
 
 const config = getConfig();
 
 class GeocodeLocationError extends Error {}
+class DirectionsError extends Error {}
 
-export async function geocodeLocation(
-  location: string
-): Promise<[number, number]> {
+type Coordinates = [number, number];
+
+export async function geocodeLocation(location: string): Promise<Coordinates> {
   const geocodingService = GeocodingV6({
     accessToken: config.MAPBOX_ACCESS_TOKEN,
   });
@@ -31,4 +33,31 @@ export async function geocodeLocation(
   const coordinates = features[0].geometry.coordinates;
   log.debug(`Location '${location}' -> [${coordinates.join(", ")}]`);
   return coordinates;
+}
+
+export async function getNavigationRoute(coordinatesList: Coordinates[]) {
+  const directionsService = Directions({
+    accessToken: config.MAPBOX_ACCESS_TOKEN,
+  });
+
+  const mbxResponse = await directionsService
+    .getDirections({
+      profile: "driving-traffic",
+      waypoints: coordinatesList.map((coordinates) => ({ coordinates })),
+      alternatives: false, // We trust you, Mapbox
+    })
+    .send();
+
+  const routes = mbxResponse.body.routes;
+  if (routes.length == 0) {
+    throw new DirectionsError(
+      `Unable to create a route for coordinates list: ${JSON.stringify(
+        coordinatesList
+      )}`
+    );
+  }
+  log.info(JSON.stringify(routes[0]));
+
+  // @types/mapbox__mapbox-sdk are incorrect here
+  return routes[0] as Route<string> & { duration_typical: number };
 }
