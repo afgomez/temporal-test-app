@@ -38,5 +38,5 @@ For the sake of simplicity, this app makes the following assumptions.
 4. Run the service
 
    ```
-   npm run service -- "waypoint1" "waypoint2" "waypoint3" ...
+   npm run service -- "Amsterdam" "Berlin" "Warsaw" ...
    ```
