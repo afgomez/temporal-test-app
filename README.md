@@ -15,7 +15,7 @@ For the sake of simplicity, this app makes the following assumptions.
 
 ## Prerequisites
 
-The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, [Resend](https://resend.com/) for emails, and OpenAPI for composing email messages. API keys are needed for all of them.
+The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, [Resend](https://resend.com/) for emails, and [OpenAI](https://platform.openai.com) for composing email messages. API keys are needed for all of them.
 
 ## Running the app
 
@@ -43,3 +43,11 @@ The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, [R
    ```
    npm run workflow -- "Amsterdam, The Netherlands" "Warsaw, Poland" ...
    ```
+
+## Running the tests
+
+The app uses Node's builtin test functions. To run the tests, execute:
+
+```
+npm test
+```
