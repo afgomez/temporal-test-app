@@ -6,7 +6,7 @@ async function run(locations: string[]) {
   const client = new Client({});
 
   const handle = await client.workflow.start(checkRoute, {
-    workflowId: "route-notifier",
+    workflowId: "route-notifier-${routeId}",
     taskQueue: QUEUE_NAME,
     args: [{ locations }],
   });

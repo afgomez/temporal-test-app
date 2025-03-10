@@ -35,6 +35,7 @@ export async function checkRoute(
   const durationDiff = route.duration - route.duration_typical;
 
   // if (true) {
+  //   const response = await generateResponse(args.locations, Math.abs(durationDiff)); // might be negative. Make sure it's positive when testing
   if (durationDiff > TEN_MINUTES) {
     const response = await generateResponse(args.locations, durationDiff);
     await notifyCustomer(response);

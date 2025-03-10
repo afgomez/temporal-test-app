@@ -145,6 +145,8 @@ export async function notifyCustomer(htmlMessage: string) {
     html: htmlMessage,
   });
 
+  log.debug(`resend response: ${JSON.stringify(response)}`);
+
   // https://github.com/resend/resend-node/issues/286
   const error = response.error as ErrorResponse & { statusCode: number };
   if (error) {
@@ -152,6 +154,8 @@ export async function notifyCustomer(htmlMessage: string) {
       type: "resend-error",
       nonRetryable: isHTTPClientError(error.statusCode),
     });
+  } else {
+    log.info(`Resend: sent email #${response.data?.id}`);
   }
 
   return response.data;

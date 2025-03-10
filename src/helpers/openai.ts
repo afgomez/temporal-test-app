@@ -12,7 +12,7 @@ Your response format is HTML. Strip the \`<html>\`, \`<head>\`, and \`<body>\` t
 } as const;
 
 export const USER_PROMPTS = {
-  TRAFFIC_DELAY_MESSAGE: `Customer "{{customer}}" has a delivery between "{{from}}" and "{{to}}". There is a delay of {{delay}} seconds due to traffic. Componse a response.`,
+  TRAFFIC_DELAY_MESSAGE: `Customer "{{customer}}" has a delivery between "{{from}}" and "{{to}}", delayed {{delay}} seconds due to traffic. Componse a response.`,
 } as const;
 
 export function getOpenAIClient() {

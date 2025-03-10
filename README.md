@@ -10,12 +10,12 @@ For the sake of simplicity, this app makes the following assumptions.
 
 - Checking for delays is a one-off operation. We don't need to respond to changes in traffic.
 - The route waypoints are given as input to the program.
-- There is only one customer.
-- This app will ever only run in development.
+- Some values are static (i.e. the "From" email field, the customer name, or our company name).
+- This app will ever only run in development. No need to specify the Temporal host.
 
 ## Prerequisites
 
-The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, and [Resend](https://resend.com/) for emails. API keys are needed for both
+The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, [Resend](https://resend.com/) for emails, and OpenAPI for composing email messages. API keys are needed for all of them.
 
 ## Running the app
 
@@ -23,8 +23,7 @@ The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, an
 
    ```
    cp .env{.example,}
-   sed -i '' -e "s/<EMAIL>/$(git config --get user.email)/g" .env
-   # ^^ ...or do it by hand
+   sed -i '' -e "s/<EMAIL>/$(git config --get user.email)/g" .env # Recommended for testing
    ```
 
 2. Start the temporal server (assumes the [temporal CLI](https://docs.temporal.io/cli#install) is installed)
@@ -39,8 +38,8 @@ The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, an
    npm run worker
    ```
 
-4. Run the service
+4. Run the workflow
 
    ```
-   npm run service -- "Amsterdam" "Berlin" "Warsaw" ...
+   npm run workflow -- "Amsterdam, The Netherlands" "Warsaw, Poland" ...
    ```
