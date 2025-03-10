@@ -1,4 +1,4 @@
-import { ApplicationFailure, proxyActivities } from "@temporalio/workflow";
+import { ApplicationFailure, log, proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "../activities/activities.js";
 
@@ -9,24 +9,27 @@ type CheckRouteArgs = {
 const {
   geocodeLocation,
   getNavigationRoute,
-  generateResponse,
+  createAIEmail,
+  createSimpleEmail,
   notifyCustomer,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
   retry: {
-    nonRetryableErrorTypes: [
-      "InvalidTokenError",
-      "DirectionsError",
-      "InvalidTokenError",
-    ],
+    maximumAttempts: 5,
   },
 });
 
 const TEN_MINUTES = 10 * 60;
 
+export type CheckRouteWorkflowResult = {
+  notificationStatus: "skipped" | "sent" | "failed";
+  delay: number;
+  message?: string;
+};
+
 export async function checkRoute(
   args: CheckRouteArgs
-): Promise<"on_time" | "delayed"> {
+): Promise<CheckRouteWorkflowResult> {
   if (args.locations.length < 2) {
     throw ApplicationFailure.nonRetryable(
       `checkRoute(): unable to run workflow. Expected 2+ locations. Got ${args.locations.length}`
@@ -41,12 +44,23 @@ export async function checkRoute(
   const durationDiff = route.duration - route.duration_typical;
 
   // if (true) {
-  //   const response = await generateResponse(args.locations, Math.abs(durationDiff)); // might be negative. Make sure it's positive when testing
   if (durationDiff >= TEN_MINUTES) {
-    const response = await generateResponse(args.locations, durationDiff);
-    await notifyCustomer(response);
-    return "delayed";
+    let response;
+    try {
+      response = await createAIEmail(args.locations, durationDiff);
+    } catch {
+      response = await createSimpleEmail(args.locations, durationDiff);
+    }
+
+    let notificationStatus;
+    try {
+      await notifyCustomer(response);
+      notificationStatus = "sent" as const;
+    } catch {
+      notificationStatus = "failed" as const;
+    }
+    return { delay: durationDiff, notificationStatus, message: response };
   } else {
-    return "on_time";
+    return { delay: durationDiff, notificationStatus: "skipped" };
   }
 }

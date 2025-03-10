@@ -86,7 +86,7 @@ export async function getNavigationRoute(coordinatesList: Coordinates[]) {
   return route;
 }
 
-export async function generateResponse(
+export async function createAIEmail(
   locations: string[],
   delay: number
 ): Promise<string> {
@@ -131,7 +131,18 @@ export async function generateResponse(
     });
   }
 
-  log.info(`Generated message: ${content}`);
+  log.info(`Generated AI message: ${content}`);
+  return content;
+}
+
+export async function createSimpleEmail(locations: string[], delay: number) {
+  const content = `<p>Your delivery between ${locations[0]} and ${
+    locations.slice(-1)[0]
+  } is delayed by about ${Math.floor(
+    delay / 60
+  )} minutes. Sorry about that!</p><p>Kind regards,<br/>Friendly Freighters</p>`;
+
+  log.info(`Generated simple message: ${content}`);
   return content;
 }
 

@@ -19,9 +19,8 @@ await describe("checkRoute", () => {
     getNavigationRoute: mock.fn(() =>
       Promise.resolve({ duration: 0, duration_typical: 0 } as any)
     ),
-    generateResponse: mock.fn(() =>
-      Promise.resolve("We are late. Sorry about that")
-    ),
+    createAIEmail: mock.fn(() => Promise.resolve("AI content")),
+    createSimpleEmail: mock.fn(() => Promise.resolve("Fallback content")),
     notifyCustomer: mock.fn(() => Promise.resolve(null)),
   };
 
@@ -35,7 +34,7 @@ await describe("checkRoute", () => {
   }
 
   before(async () => {
-    testEnv = await TestWorkflowEnvironment.createLocal();
+    testEnv = await TestWorkflowEnvironment.createTimeSkipping();
   });
 
   after(async () => {
@@ -43,7 +42,10 @@ await describe("checkRoute", () => {
   });
 
   afterEach(() => {
-    Object.values(mockActivities).forEach((fn) => fn.mock.resetCalls());
+    Object.values(mockActivities).forEach((fn) => {
+      fn.mock.restore();
+      fn.mock.resetCalls();
+    });
   });
 
   it("Fails with no locations", async () => {
@@ -76,7 +78,7 @@ await describe("checkRoute", () => {
     }, WorkflowFailedError);
   });
 
-  it("Returns `on_time` if the delay is less than 10 minutes", async () => {
+  it("Skips the notification if the delay is less than 10 minutes", async () => {
     mockActivities.getNavigationRoute.mock.mockImplementationOnce(() =>
       Promise.resolve({ duration: 10 * 60 - 1, duration_typical: 0 })
     );
@@ -91,15 +93,15 @@ await describe("checkRoute", () => {
         taskQueue,
       });
 
-      assert.equal(result, "on_time");
-      assert.equal(mockActivities.generateResponse.mock.callCount(), 0);
+      assert.deepEqual(result, { notificationStatus: "skipped", delay: 599 });
+      assert.equal(mockActivities.createAIEmail.mock.callCount(), 0);
       assert.equal(mockActivities.notifyCustomer.mock.callCount(), 0);
     });
   });
 
   it("Returns `delayed` if the delay is 10 minutes or more", async () => {
     mockActivities.getNavigationRoute.mock.mockImplementationOnce(() =>
-      Promise.resolve({ duration: 10 * 60 + 1, duration_typical: 0 })
+      Promise.resolve({ duration: 10 * 60, duration_typical: 0 })
     );
 
     const { client, nativeConnection } = testEnv;
@@ -112,9 +114,68 @@ await describe("checkRoute", () => {
         taskQueue,
       });
 
-      assert.equal(result, "delayed");
-      assert.equal(mockActivities.generateResponse.mock.callCount(), 1);
+      assert.deepEqual(result, {
+        notificationStatus: "sent",
+        delay: 600,
+        message: "AI content",
+      });
+      assert.equal(mockActivities.createAIEmail.mock.callCount(), 1);
       assert.equal(mockActivities.notifyCustomer.mock.callCount(), 1);
+    });
+  });
+
+  it("Returns `failed` if the notification service failed", async () => {
+    mockActivities.getNavigationRoute.mock.mockImplementationOnce(() =>
+      Promise.resolve({ duration: 10 * 60, duration_typical: 0 })
+    );
+    mockActivities.notifyCustomer.mock.mockImplementation(() => {
+      throw new Error("I failed!");
+    });
+
+    const { client, nativeConnection } = testEnv;
+
+    const worker = await makeWorker(nativeConnection);
+    await worker.runUntil(async () => {
+      const result = await client.workflow.execute(checkRoute, {
+        args: [{ locations: ["one", "two"] }],
+        workflowId: "test",
+        taskQueue,
+      });
+
+      assert.deepEqual(result, {
+        notificationStatus: "failed",
+        delay: 600,
+        message: "AI content",
+      });
+      assert.equal(mockActivities.createAIEmail.mock.callCount(), 1);
+      assert(mockActivities.notifyCustomer.mock.callCount() > 1);
+    });
+  });
+
+  it("Uses the fallback message if OpenAI failed", async () => {
+    mockActivities.getNavigationRoute.mock.mockImplementationOnce(() =>
+      Promise.resolve({ duration: 10 * 60, duration_typical: 0 })
+    );
+    mockActivities.createAIEmail.mock.mockImplementation(() =>
+      Promise.reject(new Error("I failed!"))
+    );
+
+    const { client, nativeConnection } = testEnv;
+
+    const worker = await makeWorker(nativeConnection);
+    await worker.runUntil(async () => {
+      const result = await client.workflow.execute(checkRoute, {
+        args: [{ locations: ["one", "two"] }],
+        workflowId: "test",
+        taskQueue,
+      });
+
+      assert.deepEqual(result, {
+        notificationStatus: "sent",
+        delay: 600,
+        message: "Fallback content",
+      });
+      assert.equal(mockActivities.createSimpleEmail.mock.callCount(), 1);
     });
   });
 });
