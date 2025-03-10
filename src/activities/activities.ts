@@ -5,6 +5,13 @@ import { getMapboxClient, handleMapboxError } from "../helpers/mapbox.js";
 import { getResendClient } from "../helpers/resend.js";
 import { getConfig } from "../helpers/config.js";
 import { ErrorResponse } from "resend";
+import {
+  DEVELOPER_PROMPTS,
+  getOpenAIClient,
+  handleOpenAIError,
+  parsePromptTemplate,
+} from "../helpers/openai.js";
+import { isHTTPClientError } from "../helpers/errors.js";
 
 type Coordinates = [number, number];
 
@@ -77,6 +84,55 @@ export async function getNavigationRoute(coordinatesList: Coordinates[]) {
   );
 
   return route;
+}
+
+export async function generateResponse(
+  locations: string[],
+  delay: number
+): Promise<string> {
+  const values: Record<string, string> = {
+    customer: "John Doe",
+    from: locations[0],
+    to: locations.slice(-1)[0],
+    delay: delay.toString(),
+  };
+
+  const parsedPrompt = parsePromptTemplate("TRAFFIC_DELAY_MESSAGE", values);
+
+  const openai = getOpenAIClient();
+  let response;
+  try {
+    response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "developer",
+          content: [
+            { type: "text", text: DEVELOPER_PROMPTS.CUSTOMER_SUPPORT_MESSAGE },
+          ],
+        },
+        {
+          role: "user",
+          content: [{ type: "text", text: parsedPrompt }],
+        },
+      ],
+    });
+  } catch (err) {
+    handleOpenAIError(err);
+  }
+
+  log.debug("OpenAI response: ${JSON.Stringify(response)}");
+
+  const content = response.choices?.[0].message.content;
+  if (!content) {
+    throw ApplicationFailure.create({
+      message: "OpenAI: could not get a chat response",
+      type: "openai-empty-response",
+    });
+  }
+
+  log.info(`Generated message: ${content}`);
+  return content;
 }
 
 export async function notifyCustomer(htmlMessage: string) {
