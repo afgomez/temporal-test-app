@@ -1,7 +1,10 @@
-import { log } from "@temporalio/activity";
+import { ApplicationFailure, log } from "@temporalio/activity";
 import GeocodingV6 from "@mapbox/mapbox-sdk/services/geocoding-v6";
 import Directions, { Route } from "@mapbox/mapbox-sdk/services/directions";
 import { getMapboxClient } from "../helpers/mapbox.js";
+import { getResendClient } from "../helpers/resend.js";
+import { getConfig } from "../helpers/config.js";
+import { ErrorResponse } from "resend";
 
 class GeocodeLocationError extends Error {}
 class DirectionsError extends Error {}
@@ -53,4 +56,24 @@ export async function getNavigationRoute(coordinatesList: Coordinates[]) {
 
   // @types/mapbox__mapbox-sdk are incorrect here
   return routes[0] as Route<string> & { duration_typical: number };
+}
+
+export async function notifyCustomer(htmlMessage: string) {
+  const resend = getResendClient();
+
+  const response = await resend.emails.send({
+    from: "Freight Notifier <test@resend.dev>",
+    to: getConfig().CUSTOMER_EMAIL,
+    subject: "Delay in route",
+    html: htmlMessage,
+  });
+
+  // https://github.com/resend/resend-node/issues/286
+  const error = response.error as ErrorResponse & { statusCode: number };
+  if (error) {
+    const nonRetryable = error.statusCode >= 400 && error.statusCode < 500;
+    throw new ApplicationFailure(error.message, error.name, nonRetryable);
+  }
+
+  return response.data;
 }

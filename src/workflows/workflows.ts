@@ -6,7 +6,7 @@ type CheckRouteArgs = {
   locations: string[];
 };
 
-const { geocodeLocation, getNavigationRoute } = proxyActivities<
+const { geocodeLocation, getNavigationRoute, notifyCustomer } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "1 minute",
@@ -29,13 +29,11 @@ export async function checkRoute(
   const coordinates = await Promise.all(args.locations.map(geocodeLocation));
 
   const route = await getNavigationRoute(coordinates);
-
   const durationDiff = route.duration - route.duration_typical;
 
   // if (true) {
   if (durationDiff > TEN_MINUTES) {
-    // Generate fancy message
-    // Send message
+    await notifyCustomer("<p>The delivery is late</p>");
 
     return "delayed";
   } else {

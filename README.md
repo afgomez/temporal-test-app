@@ -13,6 +13,10 @@ For the sake of simplicity, this app makes the following assumptions.
 - There is only one customer.
 - This app will ever only run in development.
 
+## Prerequisites
+
+The app uses [Mapbox](https://www.mapbox.com) for geolocation and navigation, and [Resend](https://resend.com/) for emails. API keys are needed for both
+
 ## Running the app
 
 1. Copy `.env.example` into `.env` and fill in the gaps
