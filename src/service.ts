@@ -29,7 +29,8 @@ try {
     );
   }
 
-  await run(locations);
+  const result = await run(locations);
+  console.log(result);
 } catch (e) {
   console.error(e);
   process.exit(1);
