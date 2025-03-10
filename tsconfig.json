@@ -7,5 +7,5 @@
     "lib": ["ES2023", "DOM"],
     "esModuleInterop": true
   },
-  "include": ["eslint.config.mjs", "src/**/*.ts"]
+  "include": ["eslint.config.mjs", "src/**/*.ts", "test/**/*.ts"]
 }

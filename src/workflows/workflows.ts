@@ -1,4 +1,4 @@
-import { proxyActivities } from "@temporalio/workflow";
+import { ApplicationFailure, proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "../activities/activities.js";
 
@@ -22,11 +22,17 @@ const {
   },
 });
 
-const TEN_MINUTES = 10 * 60 * 1000;
+const TEN_MINUTES = 10 * 60;
 
 export async function checkRoute(
   args: CheckRouteArgs
 ): Promise<"on_time" | "delayed"> {
+  if (args.locations.length < 2) {
+    throw ApplicationFailure.nonRetryable(
+      `checkRoute(): unable to run workflow. Expected 2+ locations. Got ${args.locations.length}`
+    );
+  }
+
   // TODO: optimization: Mapbox has a batch mode for its geocode API. Use that
   // instead of making a request per location.
   const coordinates = await Promise.all(args.locations.map(geocodeLocation));
@@ -36,7 +42,7 @@ export async function checkRoute(
 
   // if (true) {
   //   const response = await generateResponse(args.locations, Math.abs(durationDiff)); // might be negative. Make sure it's positive when testing
-  if (durationDiff > TEN_MINUTES) {
+  if (durationDiff >= TEN_MINUTES) {
     const response = await generateResponse(args.locations, durationDiff);
     await notifyCustomer(response);
     return "delayed";

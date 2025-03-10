@@ -21,6 +21,14 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/no-floating-promises": [
+        "error",
+        {
+          allowForKnownSafeCalls: [
+            { from: "package", name: ["describe", "it"], package: "node:test" },
+          ],
+        },
+      ],
     },
   }
 );
