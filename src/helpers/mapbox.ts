@@ -1,24 +1,32 @@
 import createNodeClient from "@mapbox/mapbox-sdk";
 import MapiClient from "@mapbox/mapbox-sdk/lib/classes/mapi-client";
 import { getConfig } from "./config.js";
-import { InvalidTokenError } from "./errors.js";
+import { ApplicationFailure } from "@temporalio/common";
+import { MapiError } from "@mapbox/mapbox-sdk/lib/classes/mapi-error";
+import { isHTTPClientError } from "./errors.js";
 
 const config = getConfig();
 
 let client: MapiClient;
 
 export function getMapboxClient(): MapiClient {
-  try {
-    client ??= createNodeClient({ accessToken: config.MAPBOX_ACCESS_TOKEN });
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Invalid token")) {
-      throw new InvalidTokenError("Invalid MAPBOX_ACCESS_TOKEN");
-    }
+  client ??= createNodeClient({ accessToken: config.MAPBOX_ACCESS_TOKEN });
+  return client;
+}
 
-    // TODO: could other errors also be retried?
-    // If not, create a generic `NonRetriableError` class and use that for everything
-    throw err;
+export function handleMapboxError(err: unknown): never {
+  // Mapbox errors don't seem to inherit from Error
+  // If the error is a regular JS error Error, forward it as is.
+  if (err instanceof Error) {
+    throw ApplicationFailure.fromError(err);
   }
 
-  return client;
+  // Report Mapbox errors
+  const mapiError = err as MapiError;
+  const nonRetryable = isHTTPClientError(mapiError.statusCode || 0);
+  throw ApplicationFailure.create({
+    message: mapiError.message,
+    type: mapiError.type,
+    nonRetryable,
+  });
 }

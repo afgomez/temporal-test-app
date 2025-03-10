@@ -1,30 +1,34 @@
 import { ApplicationFailure, log } from "@temporalio/activity";
 import GeocodingV6 from "@mapbox/mapbox-sdk/services/geocoding-v6";
 import Directions, { Route } from "@mapbox/mapbox-sdk/services/directions";
-import { getMapboxClient } from "../helpers/mapbox.js";
+import { getMapboxClient, handleMapboxError } from "../helpers/mapbox.js";
 import { getResendClient } from "../helpers/resend.js";
 import { getConfig } from "../helpers/config.js";
 import { ErrorResponse } from "resend";
-
-class GeocodeLocationError extends Error {}
-class DirectionsError extends Error {}
 
 type Coordinates = [number, number];
 
 export async function geocodeLocation(location: string): Promise<Coordinates> {
   const geocodingService = GeocodingV6(getMapboxClient());
+  let response;
 
-  const response = await geocodingService
-    .forwardGeocode({ query: location })
-    .send();
+  try {
+    response = await geocodingService
+      .forwardGeocode({ query: location })
+      .send();
+  } catch (err) {
+    handleMapboxError(err);
+  }
 
   const features = response.body.features;
 
   log.debug(`GeocodingV6 response: ${JSON.stringify(response.body)}`);
   if (features.length === 0) {
-    throw new GeocodeLocationError(
-      `Unable to find coordinates for location '${location}'`
-    );
+    throw ApplicationFailure.create({
+      message: `Unable to find coordinates for location '${location}'`,
+      type: "mapbox-empty-geocoding",
+      nonRetryable: true,
+    });
   }
 
   // Usually Mapbox returns more than 1 result. We assume the
@@ -39,22 +43,29 @@ export async function geocodeLocation(location: string): Promise<Coordinates> {
 
 export async function getNavigationRoute(coordinatesList: Coordinates[]) {
   const directionsService = Directions(getMapboxClient());
-  const response = await directionsService
-    .getDirections({
-      profile: "driving-traffic",
-      waypoints: coordinatesList.map((coordinates) => ({ coordinates })),
-      alternatives: false, // We trust you, Mapbox
-    })
-    .send();
+  let response;
+  try {
+    response = await directionsService
+      .getDirections({
+        profile: "driving-traffic",
+        waypoints: coordinatesList.map((coordinates) => ({ coordinates })),
+        alternatives: false, // We trust you, Mapbox
+      })
+      .send();
+  } catch (err) {
+    handleMapboxError(err);
+  }
 
   log.debug(`Directions response: ${JSON.stringify(response.body)}`);
   const routes = response.body.routes;
   if (routes.length == 0) {
-    throw new DirectionsError(
-      `Unable to create a route for coordinates list: ${JSON.stringify(
+    throw ApplicationFailure.create({
+      message: `Unable to create a route for coordinates list: ${JSON.stringify(
         coordinatesList
-      )}`
-    );
+      )}`,
+      type: "mapbox-empty-directions",
+      nonRetryable: true,
+    });
   }
 
   // @types/mapbox__mapbox-sdk are incorrect here
@@ -81,8 +92,10 @@ export async function notifyCustomer(htmlMessage: string) {
   // https://github.com/resend/resend-node/issues/286
   const error = response.error as ErrorResponse & { statusCode: number };
   if (error) {
-    const nonRetryable = error.statusCode >= 400 && error.statusCode < 500;
-    throw new ApplicationFailure(error.message, error.name, nonRetryable);
+    throw ApplicationFailure.fromError(error, {
+      type: "resend-error",
+      nonRetryable: isHTTPClientError(error.statusCode),
+    });
   }
 
   return response.data;
