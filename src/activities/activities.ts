@@ -14,13 +14,13 @@ type Coordinates = [number, number];
 export async function geocodeLocation(location: string): Promise<Coordinates> {
   const geocodingService = GeocodingV6(getMapboxClient());
 
-  log.debug(`Resolving coordinates for location '${location}'`);
-  const mbxResponse = await geocodingService
+  const response = await geocodingService
     .forwardGeocode({ query: location })
     .send();
 
-  const features = mbxResponse.body.features;
+  const features = response.body.features;
 
+  log.debug(`GeocodingV6 response: ${JSON.stringify(response.body)}`);
   if (features.length === 0) {
     throw new GeocodeLocationError(
       `Unable to find coordinates for location '${location}'`
@@ -30,13 +30,16 @@ export async function geocodeLocation(location: string): Promise<Coordinates> {
   // Usually Mapbox returns more than 1 result. We assume the
   // first one is the correct one.
   const coordinates = features[0].geometry.coordinates;
-  log.debug(`Location '${location}' -> [${coordinates.join(", ")}]`);
+  log.info(
+    `Resolved coordinates for '${location}' -> [${coordinates.join(", ")}]`
+  );
+
   return coordinates;
 }
 
 export async function getNavigationRoute(coordinatesList: Coordinates[]) {
   const directionsService = Directions(getMapboxClient());
-  const mbxResponse = await directionsService
+  const response = await directionsService
     .getDirections({
       profile: "driving-traffic",
       waypoints: coordinatesList.map((coordinates) => ({ coordinates })),
@@ -44,7 +47,8 @@ export async function getNavigationRoute(coordinatesList: Coordinates[]) {
     })
     .send();
 
-  const routes = mbxResponse.body.routes;
+  log.debug(`Directions response: ${JSON.stringify(response.body)}`);
+  const routes = response.body.routes;
   if (routes.length == 0) {
     throw new DirectionsError(
       `Unable to create a route for coordinates list: ${JSON.stringify(
@@ -52,10 +56,16 @@ export async function getNavigationRoute(coordinatesList: Coordinates[]) {
       )}`
     );
   }
-  log.info(JSON.stringify(routes[0]));
 
   // @types/mapbox__mapbox-sdk are incorrect here
-  return routes[0] as Route<string> & { duration_typical: number };
+  const route = routes[0] as Route<string> & { duration_typical: number };
+  log.info(
+    `Found route { duration: ${route.duration}, duration_typical: ${
+      route.duration_typical
+    } }. Delay: ${Math.floor(route.duration - route.duration_typical)} seconds`
+  );
+
+  return route;
 }
 
 export async function notifyCustomer(htmlMessage: string) {
