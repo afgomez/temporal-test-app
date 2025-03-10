@@ -1,7 +1,6 @@
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { type NativeConnection, Worker } from "@temporalio/worker";
 
-import type * as activities from "../../activities/activities.js";
 import { checkRoute } from "../../workflows/workflows.js";
 import { describe, it, before, after, mock, afterEach } from "node:test";
 import assert from "node:assert";
@@ -17,7 +16,7 @@ await describe("checkRoute", () => {
   const mockActivities = {
     geocodeLocation: mock.fn(() => Promise.resolve([0, 0] as [number, number])),
     getNavigationRoute: mock.fn(() =>
-      Promise.resolve({ duration: 0, duration_typical: 0 } as any)
+      Promise.resolve({ duration: 0, duration_typical: 0 })
     ),
     createAIEmail: mock.fn(() => Promise.resolve("AI content")),
     createSimpleEmail: mock.fn(() => Promise.resolve("Fallback content")),

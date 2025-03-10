@@ -1,4 +1,4 @@
-import { ApplicationFailure, log, proxyActivities } from "@temporalio/workflow";
+import { ApplicationFailure, proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "../activities/activities.js";
 
